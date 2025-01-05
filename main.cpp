@@ -13,8 +13,7 @@
 #include <cmath>
 #include <limits>
 #include <array>
-
-
+#include <cassert>
 
 // Define a 3D vector
 struct Vec3 {
@@ -54,6 +53,7 @@ struct Vec3 {
     }
 
     const float operator[] (const size_t& i) const {
+        assert(i < 3);
         if (i == 0) {
             return x;
         } else if (i == 1) {
@@ -64,6 +64,7 @@ struct Vec3 {
     }
 
     float& operator[] (const size_t& i) {
+        assert(i < 3);
         if (i == 0) {
             return x;
         } else if (i == 1) {
@@ -91,9 +92,10 @@ public:
     Vec3 p2;
 
     Vec3 operator[](const size_t i) const {
+        assert(i < 3);
         if (i == 0) {
             return p0;
-        } else if (i == 2) {
+        } else if (i == 1) {
             return p1;
         } else {
             return p2;
@@ -101,20 +103,16 @@ public:
     }
 
     Vec3& operator[](const size_t i) {
+        assert(i < 3);
         if (i == 0) {
             return p0;
-        } else if (i == 2) {
+        } else if (i == 1) {
             return p1;
         } else {
             return p2;
         }
     }
-
-    // float vertices[3][3]; // Each triangle has 3 vertices (x, y, z)
 };
-
-
-
 
 std::pair<float, float> project_polygon(const Vec3& axis, const Triangle& triangle) {
     float min_proj = std::numeric_limits<float>::infinity();
@@ -209,9 +207,6 @@ bool triangle_intersection_3d(const Triangle& triangle1, const Triangle& triangl
 bool triangle_intersection(const Triangle& triangle1, const Triangle& triangle2) {
     if (is_coplanar(triangle1, triangle2)) {
         // Project triangles onto 2D plane by ignoring one coordinate (e.g., z)
-        // Triangle triangle1_2d = {{{triangle1[0].x, triangle1[0].y, 0}, {triangle1[1].x, triangle1[1].y, 0}, {triangle1[2].x, triangle1[2].y, 0}}};
-        // Triangle triangle2_2d = {{{triangle2[0].x, triangle2[0].y, 0}, {triangle2[1].x, triangle2[1].y, 0}, {triangle2[2].x, triangle2[2].y, 0}}};
-
         Triangle triangle1_2d(Vec3(triangle1.p0.x, triangle1.p0.y, 0), Vec3(triangle1.p1.x, triangle1.p1.y, 0), Vec3(triangle1.p2.x, triangle1.p2.y, 0));
         Triangle triangle2_2d(Vec3(triangle2.p0.x, triangle2.p0.y, 0), Vec3(triangle2.p1.x, triangle2.p1.y, 0), Vec3(triangle2.p2.x, triangle2.p2.y, 0));
         return triangle_intersection_2d(triangle1_2d, triangle2_2d);
@@ -220,9 +215,6 @@ bool triangle_intersection(const Triangle& triangle1, const Triangle& triangle2)
     }
 }
 
-
-
-// AABB structure
 struct AABB {
     float min[3], max[3];
 
@@ -265,6 +257,14 @@ struct BVHNode {
     int triangleIndex; // Triangle index if this is a leaf
 
     BVHNode() : leftChild(-1), rightChild(-1), triangleIndex(-1) {}
+
+    bool isLeaf() const {
+        if ((leftChild == -1) && (rightChild == -1)) {
+            return true;
+        }
+
+        return false;
+    }
 };
 
 struct BVH {
@@ -343,7 +343,6 @@ struct BVH {
             file << std::endl;
         }
 
-
         file.close();
         std::cout << "BVH exported to " << filename << std::endl;
     }
@@ -366,104 +365,123 @@ struct BVH {
         file.close();
         std::cout << "BVH exported to " << filename << std::endl;
     }
+
+    void exportBVHDataToFile(const std::string& filename) {
+        std::ofstream file(filename);
+
+        if (!file.is_open()) {
+            std::cerr << "Error: Cannot open file for writing: " << filename << std::endl;
+            return;
+        }
+
+        for (size_t i = 0; i < nodes.size(); ++i) {
+            const auto pMin = nodes[i].box.min;
+            const auto pMax = nodes[i].box.max;
+            file << i << " " << pMin[0] << " " << pMin[1] << " " << pMin[2] << std::endl;
+            file << i << " " << pMax[0] << " " << pMax[1] << " " << pMax[2] << std::endl;
+            file << "Triangle index: " << nodes[i].triangleIndex;
+            file << std::endl;
+        }
+        file.close();
+        std::cout << "BVH exported to " << filename << std::endl;
+    }
 };
 
-// Check if two ranges overlap
-bool rangesOverlap(float min1, float max1, float min2, float max2) {
-    return !(max1 < min2 || max2 < min1);
-}
+// // Check if two ranges overlap
+// bool rangesOverlap(float min1, float max1, float min2, float max2) {
+//     return !(max1 < min2 || max2 < min1);
+// }
 
-// Cross product of two 3D vectors
-void crossProduct(const Vec3& u, const Vec3& v, Vec3& result) {
-    float result0 = u[1] * v[2] - u[2] * v[1];
-    float result1 = u[2] * v[0] - u[0] * v[2];
-    float result2  = u[0] * v[1] - u[1] * v[0];
+// // Cross product of two 3D vectors
+// void crossProduct(const Vec3& u, const Vec3& v, Vec3& result) {
+//     float result0 = u[1] * v[2] - u[2] * v[1];
+//     float result1 = u[2] * v[0] - u[0] * v[2];
+//     float result2  = u[0] * v[1] - u[1] * v[0];
 
-    result.x = result0;
-    result.y = result1;
-    result.z = result2;
+//     result.x = result0;
+//     result.y = result1;
+//     result.z = result2;
+// }
 
-}
+// // Dot product of two 3D vectors
+// float dotProduct(const Vec3& u, const Vec3& v) {
+//     return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+// }
 
-// Dot product of two 3D vectors
-float dotProduct(const Vec3& u, const Vec3& v) {
-    return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
-}
+// // Subtract two 3D vectors
+// void subtract(const Vec3& u, const Vec3& v, Vec3& result) {
+//     result = u - v;
+//     // result[0] = u[0] - v[0];
+//     // result[1] = u[1] - v[1];
+//     // result[2] = u[2] - v[2];
+// }
 
-// Subtract two 3D vectors
-void subtract(const Vec3& u, const Vec3& v, Vec3& result) {
-    result = u - v;
-    // result[0] = u[0] - v[0];
-    // result[1] = u[1] - v[1];
-    // result[2] = u[2] - v[2];
-}
+// void projectTriangleOntoAxis(const Triangle& tri, const Vec3& axis, float& min, float& max) {
+//     float projection0 = dotProduct(tri[0], axis);
+//     float projection1 = dotProduct(tri[1], axis);
+//     float projection2 = dotProduct(tri[2], axis);
 
-void projectTriangleOntoAxis(const Triangle& tri, const Vec3& axis, float& min, float& max) {
-    float projection0 = dotProduct(tri[0], axis);
-    float projection1 = dotProduct(tri[1], axis);
-    float projection2 = dotProduct(tri[2], axis);
-
-    min = std::min({projection0, projection1, projection2});
-    max = std::max({projection0, projection1, projection2});
-}
-
-
-bool triangleIntersect(const Triangle& tri1, const Triangle& tri2) {
-    const Vec3 v0 = tri1[0];
-    const Vec3 v1 = tri1[1];
-    const Vec3 v2 = tri1[2];
-
-    const Vec3 u0 = tri2[0];
-    const Vec3 u1 = tri2[1];
-    const Vec3 u2 = tri2[2];
-
-    // Compute edges of the triangles
-    Vec3 e1, e2, f1, f2;
-
-    subtract(v1, v0, e1);
-    subtract(v2, v0, e2);
-    subtract(u1, u0, f1);
-    subtract(u2, u0, f2);
-
-    // Compute normals of the triangles
-    Vec3 n1, n2;
-    crossProduct(e1, e2, n1);
-    crossProduct(f1, f2, n2);
-
-    // Test the triangle normals as separating axes
-    float tri1Min, tri1Max, tri2Min, tri2Max;
-
-    projectTriangleOntoAxis(tri1, n1, tri1Min, tri1Max);
-    projectTriangleOntoAxis(tri2, n1, tri2Min, tri2Max);
-    if (!rangesOverlap(tri1Min, tri1Max, tri2Min, tri2Max)) return false;
-
-    projectTriangleOntoAxis(tri1, n2, tri1Min, tri1Max);
-    projectTriangleOntoAxis(tri2, n2, tri2Min, tri2Max);
-    if (!rangesOverlap(tri1Min, tri1Max, tri2Min, tri2Max)) return false;
-
-    // Test cross products of edges as separating axes
-    // float axes[9][3];
-    // crossProduct(e1, f1, axes[0]);
-    // crossProduct(e1, f2, axes[1]);
-    // crossProduct(e2, f1, axes[2]);
-    // crossProduct(e2, f2, axes[3]);
-
-    Vec3* axesArray = new Vec3[9];
-    crossProduct(e1, f1, axesArray[0]);
-    crossProduct(e1, f2, axesArray[1]);
-    crossProduct(e2, f1, axesArray[2]);
-    crossProduct(e2, f2, axesArray[3]);
+//     min = std::min({projection0, projection1, projection2});
+//     max = std::max({projection0, projection1, projection2});
+// }
 
 
-    for (int i = 0; i < 9; ++i) {
-        projectTriangleOntoAxis(tri1, axesArray[i], tri1Min, tri1Max);
-        projectTriangleOntoAxis(tri2, axesArray[i], tri2Min, tri2Max);
-        if (!rangesOverlap(tri1Min, tri1Max, tri2Min, tri2Max)) return false;
-    }
+// bool triangleIntersect(const Triangle& tri1, const Triangle& tri2) {
+//     const Vec3 v0 = tri1[0];
+//     const Vec3 v1 = tri1[1];
+//     const Vec3 v2 = tri1[2];
 
-    // If no separating axis is found, triangles intersect
-    return true;
-}
+//     const Vec3 u0 = tri2[0];
+//     const Vec3 u1 = tri2[1];
+//     const Vec3 u2 = tri2[2];
+
+//     // Compute edges of the triangles
+//     Vec3 e1, e2, f1, f2;
+
+//     subtract(v1, v0, e1);
+//     subtract(v2, v0, e2);
+//     subtract(u1, u0, f1);
+//     subtract(u2, u0, f2);
+
+//     // Compute normals of the triangles
+//     Vec3 n1, n2;
+//     crossProduct(e1, e2, n1);
+//     crossProduct(f1, f2, n2);
+
+//     // Test the triangle normals as separating axes
+//     float tri1Min, tri1Max, tri2Min, tri2Max;
+
+//     projectTriangleOntoAxis(tri1, n1, tri1Min, tri1Max);
+//     projectTriangleOntoAxis(tri2, n1, tri2Min, tri2Max);
+//     if (!rangesOverlap(tri1Min, tri1Max, tri2Min, tri2Max)) return false;
+
+//     projectTriangleOntoAxis(tri1, n2, tri1Min, tri1Max);
+//     projectTriangleOntoAxis(tri2, n2, tri2Min, tri2Max);
+//     if (!rangesOverlap(tri1Min, tri1Max, tri2Min, tri2Max)) return false;
+
+//     // Test cross products of edges as separating axes
+//     // float axes[9][3];
+//     // crossProduct(e1, f1, axes[0]);
+//     // crossProduct(e1, f2, axes[1]);
+//     // crossProduct(e2, f1, axes[2]);
+//     // crossProduct(e2, f2, axes[3]);
+
+//     Vec3* axesArray = new Vec3[9];
+//     crossProduct(e1, f1, axesArray[0]);
+//     crossProduct(e1, f2, axesArray[1]);
+//     crossProduct(e2, f1, axesArray[2]);
+//     crossProduct(e2, f2, axesArray[3]);
+
+
+//     for (int i = 0; i < 9; ++i) {
+//         projectTriangleOntoAxis(tri1, axesArray[i], tri1Min, tri1Max);
+//         projectTriangleOntoAxis(tri2, axesArray[i], tri2Min, tri2Max);
+//         if (!rangesOverlap(tri1Min, tri1Max, tri2Min, tri2Max)) return false;
+//     }
+
+//     // If no separating axis is found, triangles intersect
+//     return true;
+// }
 
 void detectIntersections(const BVH& bvh, int nodeA, int nodeB, std::vector<std::pair<int, int>>& results) {
     const BVHNode& a = bvh.nodes[nodeA];
@@ -474,9 +492,14 @@ void detectIntersections(const BVH& bvh, int nodeA, int nodeB, std::vector<std::
 
     // If both are leaves, test triangles
     if (a.leftChild == -1 && b.leftChild == -1) {
-        if (triangleIntersect(bvh.triangles[a.triangleIndex], bvh.triangles[b.triangleIndex])) {
+
+        if (triangle_intersection_3d(bvh.triangles[a.triangleIndex], bvh.triangles[b.triangleIndex])) {
             results.emplace_back(a.triangleIndex, b.triangleIndex);
-        }
+        };
+
+        // if (triangleIntersect(bvh.triangles[a.triangleIndex], bvh.triangles[b.triangleIndex])) {
+        //     results.emplace_back(a.triangleIndex, b.triangleIndex);
+        // }
         return;
     }
 
@@ -551,13 +574,14 @@ bool loadOBJ(const std::string& filename, std::vector<Triangle>& triangles) {
 
 int main()
 {
-    Triangle triangle1(Vec3(0.207, 0.588, 0.375), Vec3(0.259, 0.241, 0.161), Vec3(0.468, 0.274, 0.802));
-    Triangle triangle2(Vec3(0.504, 0.379, 0.735), Vec3(0.360, 0.638, 0.239), Vec3(0.293, 0.178, 0.773));
+    Triangle triangle1(Vec3(0.340, 0.639, 0.698), Vec3(0.737, 0.083, 0.159), Vec3(0.744, 0.590, 0.548));
+    Triangle triangle2(Vec3(0.271, 0.254, 0.444), Vec3(0.374, 0.442, 0.113), Vec3(0.607, 0.621, 0.887));
+
 
     if (triangle_intersection(triangle1, triangle2)) {
-        std::cout << "Triangles intersect" << std::endl;
+        std::cout << "Triangles intersect!" << std::endl;
     } else {
-        std::cout << "Triangles do not intersect" << std::endl;
+        std::cout << "Triangles do not intersect!" << std::endl;
     }
 
     std::vector<Triangle> triangles;
@@ -573,8 +597,8 @@ int main()
     bvh.initialize(triangles);
 
     bvh.exportPointsToFile("/home/abdellah/Downloads/irregular.pts");
+    bvh.exportBVHDataToFile("/home/abdellah/Downloads/irregular.bvh");
 
-    std::cout << "Number nodes: " << bvh.nodes.size() << std::endl;
 
     // Detect self-intersections
     std::vector<std::pair<int, int>> intersections;
