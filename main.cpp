@@ -150,6 +150,39 @@ bool is_coplanar(const Triangle& triangle1, const Triangle& triangle2) {
     return false;
 }
 
+// Function to check if two points are equal
+bool pointsEqual(const Vec3& p1, const Vec3& p2) {
+    return std::fabs(p1[0] - p2[0]) < 1e-6 && std::fabs(p1[1] - p2[1]) < 1e-6 && std::fabs(p1[2] - p2[2]) < 1e-6;
+}
+
+// Function to check if two triangles share an edge
+bool shareEdge(const Triangle& tri1, const Triangle& tri2) {
+    int sharedEdges = 0;
+
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if ((pointsEqual(tri1[i], tri2[j]) && pointsEqual(tri1[(i + 1) % 3], tri2[(j + 1) % 3])) ||
+                (pointsEqual(tri1[i], tri2[(j + 1) % 3]) && pointsEqual(tri1[(i + 1) % 3], tri2[j]))) {
+                sharedEdges += 1;
+            }
+        }
+    }
+
+    return sharedEdges == 1;
+}
+
+// Function to check if two triangles share a point
+bool sharePoint(const Triangle& tri1, const Triangle& tri2) {
+    for (const auto& p1 : tri1) {
+        for (const auto& p2 : tri2) {
+            if (pointsEqual(p1, p2)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool triangle_intersection_2d(const Triangle& triangle1, const Triangle& triangle2) {
     std::vector<Vec3> axes;
 
@@ -172,6 +205,11 @@ bool triangle_intersection_2d(const Triangle& triangle1, const Triangle& triangl
 }
 
 bool triangle_intersection_3d(const Triangle& triangle1, const Triangle& triangle2) {
+
+    if (shareEdge(triangle1, triangle2)) {
+        return false;
+    }
+
     std::vector<Vec3> axes;
 
     for (const auto& tri : {triangle1, triangle2}) {
@@ -495,11 +533,15 @@ void detectIntersections(const BVH& bvh, int nodeA, int nodeB, std::vector<std::
 
         if (triangle_intersection_3d(bvh.triangles[a.triangleIndex], bvh.triangles[b.triangleIndex])) {
             results.emplace_back(a.triangleIndex, b.triangleIndex);
+            const auto t1 = bvh.triangles[a.triangleIndex];
+            const auto t2 = bvh.triangles[b.triangleIndex];
+
+            printf("tri1 = np.array([(%f, %f, %f), (%f, %f, %f), (%f, %f, %f)])\n"
+                   "tri2 = np.array([(%f, %f, %f), (%f, %f, %f), (%f, %f, %f)])\n",
+                   t1.p0.x, t1.p0.y, t1.p0.z, t1.p1.x, t1.p1.y, t1.p1.z, t1.p2.x, t1.p2.y, t1.p2.z,
+                   t2.p0.x, t2.p0.y, t2.p0.z, t2.p1.x, t2.p1.y, t2.p1.z, t2.p2.x, t2.p2.y, t2.p2.z);
         };
 
-        // if (triangleIntersect(bvh.triangles[a.triangleIndex], bvh.triangles[b.triangleIndex])) {
-        //     results.emplace_back(a.triangleIndex, b.triangleIndex);
-        // }
         return;
     }
 
@@ -515,7 +557,8 @@ void detectIntersections(const BVH& bvh, int nodeA, int nodeB, std::vector<std::
 
 void detectAllIntersections(const BVH& bvh, std::vector<std::pair<int, int>>& results) {
     for (int i = 0; i < bvh.nodes.size(); ++i) {
-        for (int j = i + 1; j < bvh.nodes.size(); ++j) {
+        for (int j = 0; j < bvh.nodes.size(); ++j) {
+            if (i == j) continue;
             detectIntersections(bvh, i, j, results);
         }
     }
