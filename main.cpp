@@ -930,7 +930,7 @@ int main()
     // Detect self-intersections
     std::cout << "Detecting Intersections \n";
     std::vector<std::pair<int, int>> intersections;
-    detectAllIntersections(bvh, intersections);
+    detectAllIntersections(bvh, intersections); 
 
     // std::cout << "Removing Duplicates \n";
     // intersections = removeDuplicateIntersections(intersections);
@@ -948,6 +948,6 @@ int main()
     //            t2.p0.x, t2.p0.y, t2.p0.z, t2.p1.x, t2.p1.y, t2.p1.z, t2.p2.x, t2.p2.y, t2.p2.z);
     //     printf("%d, %d\n", pair.first, pair.second);
     // }
-
+    
     return 0;
 }
